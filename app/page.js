@@ -1,3 +1,5 @@
+"use client"; //This MUST be the first line
+
 import { useState, useEffect } from 'react';
 
 export default function TimetableGrid({ userProfile }) {
