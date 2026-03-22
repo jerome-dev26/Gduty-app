@@ -1,6 +1,19 @@
-"use client"; //This MUST be the first line
+"use client"; // This MUST be the first line
 
 import { useState, useEffect } from 'react';
+
+// Mock function for slot generation (ensure this exists in your utility file or component)
+const generateSlots = (interval) => {
+  const times = [];
+  let start = 0; // 00:00 in minutes
+  while (start < 1440) { // 24 hours
+    const h = Math.floor(start / 60).toString().padStart(2, '0');
+    const m = (start % 60).toString().padStart(2, '0');
+    times.push(`${h}:${m}`);
+    start += interval;
+  }
+  return times;
+};
 
 export default function TimetableGrid({ userProfile }) {
   const [slots, setSlots] = useState([]);
@@ -10,6 +23,19 @@ export default function TimetableGrid({ userProfile }) {
   useEffect(() => {
     setSlots(generateSlots(interval));
   }, [interval]);
+
+  // Guard Clause: If userProfile is missing, show a loading state 
+  // instead of crashing the app.
+  if (!userProfile) {
+    return (
+      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center text-slate-400">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4 mx-auto"></div>
+          <p>Loading station profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   const canEditTMain = userProfile?.station_id === 'T1';
 
@@ -23,10 +49,15 @@ export default function TimetableGrid({ userProfile }) {
         </div>
         
         <div className="text-right">
-          <h2 className="text-xl font-light uppercase tracking-widest text-blue-400">Station {userProfile.station_id}</h2>
-          <p className="text-[10px] text-slate-500 italic">Last Edited: 14:15 by {userProfile.unique_name}</p>
+          <h2 className="text-xl font-light uppercase tracking-widest text-blue-400">
+            Station {userProfile?.station_id || 'N/A'}
+          </h2>
+          <p className="text-[10px] text-slate-500 italic">
+            Last Edited: 14:15 by {userProfile?.unique_name || 'Unknown'}
+          </p>
         </div>
       </div>
+
       {/* T-MAIN SECTION (T1 Restricted) */}
       <div className="grid grid-cols-2 gap-1 mb-6 border-4 border-blue-900/30 rounded-lg overflow-hidden">
         <div className="bg-slate-900 p-4 text-center">
