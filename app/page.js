@@ -11,7 +11,7 @@ export default function TimetableGrid({ userProfile }) {
     setSlots(generateSlots(interval));
   }, [interval]);
 
-  const canEditTMain = userProfile.station_id === 'T1';
+  const canEditTMain = userProfile?.station_id === 'T1';
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-slate-100 p-8 font-sans transition-colors duration-300">
