@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 // 1. Initialize Supabase Client
-// Note: In a production app, these should be in your .env.local file
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -23,51 +22,56 @@ const generateSlots = (interval) => {
 
 export default function TimetableGrid({ userProfile: propProfile }) {
   const [userProfile, setUserProfile] = useState(propProfile || null);
+  const [guards, setGuards] = useState([]); // State for the guards list
   const [slots, setSlots] = useState([]);
   const [assignments, setAssignments] = useState({});
   const [interval, setInterval] = useState(75);
-  const [loading, setLoading] = useState(!propProfile); 
+  const [loading, setLoading] = useState(true); 
 
-  // 2. Fetch Profile from Supabase on mount
   useEffect(() => {
-    async function getProfile() {
-      if (propProfile) return; // Skip if already provided by parent
-
+    async function fetchData() {
       try {
-        const { data, error } = await supabase
-          .from('profiles') // Replace with your actual table name
+        // A. Fetch Profile (using maybeSingle to avoid coercion error)
+        const { data: profileData } = await supabase
+          .from('profiles') 
           .select('*')
-          .limit(1)
-          .single();
+          .maybeSingle();
 
-        if (error) throw error;
-        setUserProfile(data);
+        if (profileData) {
+          setUserProfile(profileData);
+        } else {
+          // Fallback if table is empty
+          setUserProfile({ station_id: 'T1', unique_name: 'Local_Admin' });
+        }
+
+        // B. Fetch Guards List for the dropdowns
+        const { data: guardsData } = await supabase
+          .from('guards') // Replace with your actual guards table name
+          .select('id, name')
+          .order('name', { ascending: true });
+
+        if (guardsData) setGuards(guardsData);
+
       } catch (err) {
-        console.error("Error fetching profile, using fallback:", err.message);
-        // Fallback profile so the page doesn't stay stuck on "Loading"
-        setUserProfile({
-          station_id: 'T1',
-          unique_name: 'Local_Admin'
-        });
+        console.error("Fetch error:", err.message);
       } finally {
         setLoading(false);
       }
     }
 
-    getProfile();
+    fetchData();
   }, [propProfile]);
 
   useEffect(() => {
     setSlots(generateSlots(interval));
   }, [interval]);
 
-  // Handle the loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0f172a] flex items-center justify-center text-slate-400">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4 mx-auto"></div>
-          <p>Connecting to Supabase...</p>
+          <p>Syncing with Supabase...</p>
         </div>
       </div>
     );
@@ -124,22 +128,19 @@ export default function TimetableGrid({ userProfile: propProfile }) {
                 <td className="p-2">
                   <select 
                     className="w-full bg-[#020617] border border-slate-700 p-2 rounded text-sm focus:border-blue-500"
+                    value={assignments[slot] || ""}
                     onChange={(e) => setAssignments({...assignments, [slot]: e.target.value})}
                   >
                     <option value="">Select Guard...</option>
-                    <option value="guard1">Guard Alpha</option>
-                    <option value="guard2">Guard Bravo</option>
+                    {guards.map(guard => (
+                      <option key={guard.id} value={guard.id}>
+                        {guard.name}
+                      </option>
+                    ))}
                   </select>
                 </td>
               </tr>
             ))}
-            <tr className="bg-blue-950/20">
-              <td className="p-4 font-bold text-slate-300">DAY (1/2)</td>
-              <td className="p-2 flex gap-2">
-                <select className="flex-1 bg-slate-900 border border-slate-700 p-2 rounded text-xs"><option>Morning</option></select>
-                <select className="flex-1 bg-slate-900 border border-slate-700 p-2 rounded text-xs"><option>Afternoon</option></select>
-              </td>
-            </tr>
           </tbody>
         </table>
       </div>
